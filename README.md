@@ -12,7 +12,7 @@ Part 3: Low-Stock Alert API Implementation
 The focus is on backend correctness, scalability, and real-world SaaS considerations, rather than a fully runnable application.
 
 🧩 Repository Structure
-stockflow-backend/
+case-study/
 ├── Part1/
 │   ├── explanation_part1.md
 │   ├── fixed_endpoint.py
