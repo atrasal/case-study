@@ -1,42 +1,52 @@
-# Part 2: Database Design – StockFlow
+# Part 2 — Database Design Notes
 
-## Design Goals
-- Support multiple companies and warehouses
-- Allow products in multiple warehouses
-- Track inventory changes over time
-- Support suppliers and product bundles
+## 1. Companies → Warehouses (One-to-Many)
+A company can operate multiple warehouses.
 
-## Key Design Decisions
+## 2. Products
+Products belong to a company.
+SKU is unique per company (not globally).
 
-### Product vs Inventory Separation
-Products are warehouse-agnostic. Inventory is warehouse-specific, enabling multi-warehouse scalability.
+Fields:
+- threshold: used for low-stock alerts
+- is_deleted: soft delete for audit & referential integrity
 
-### Inventory Movements
-An append-only inventory_movements table enables auditing, analytics, and debugging stock discrepancies.
+## 3. Inventory (product + warehouse)
+This table tracks stock levels per warehouse.
+The UNIQUE(product_id, warehouse_id) constraint ensures exactly one row per warehouse.
 
-### Supplier Relationships
-Many-to-many relationship allows multiple suppliers per product and future expansion.
+## 4. Inventory Log
+Tracks all stock changes over time.
+Useful for:
+- audit trails
+- forecasting
+- low-stock prediction
 
-### Bundles
-Product bundles are modeled relationally to preserve referential integrity and queryability.
+## 5. Suppliers
+Suppliers mapped per company.
 
-## Indexing & Constraints
-- Unique SKU constraint
-- Unique (product_id, warehouse_id) inventory constraint
-- Non-negative inventory quantities
+## 6. supplier_products (many-to-many)
+A supplier may supply many products; a product may have multiple suppliers.
 
-## Missing Requirements / Questions
-1. Is SKU uniqueness global or company-specific?
-2. Can products belong to multiple companies?
-3. Are negative inventories allowed?
-4. Can bundles contain other bundles?
-5. Are suppliers warehouse-specific?
+Lead time is stored here since it varies per supplier.
 
-## Assumptions
-- SKU uniqueness is global
-- Inventory quantities cannot be negative
-- Bundles contain only standard products
-- Products may have multiple suppliers
+## 7. Bundles (product_components)
+A bundle is a product composed of other products.
 
-## Summary
-This schema balances scalability, data integrity, and real-world B2B inventory requirements.
+- Uses a self join via product_components
+- Allows flexible kit definitions
+
+## 8. Indexing Choices
+- SKU index → fast lookup
+- inventory(product_id, warehouse_id) → fast joins for alerts
+- inventory_log(product_id, created_at) → fast forecasting
+- warehouse/company indexes → multi-tenant SaaS performance
+
+## 9. Soft Deletes
+Products have an `is_deleted` flag to avoid breaking FK constraints.
+Keeps historical logs intact.
+
+## 10. Constraints for Data Quality
+- Positive quantity in bundle components
+- Non-negative inventory
+- ENUM-like checks for change_type

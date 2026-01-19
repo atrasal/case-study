@@ -1,148 +1,65 @@
-Part 1: Code Review & Debugging
+# Part 1 — Issues Identified in Original Code
 
-StockFlow – Product Creation API
+## 1. No Input Validation
+- Code assumes all fields exist in request JSON.
+- Missing validation for formats, nulls, negative values.
 
-1. Original Code Under Review
-@app.route('/api/products', methods=['POST'])
-def create_product():
-    data = request.json
-    
-    # Create new product
-    product = Product(
-        name=data['name'],
-        sku=data['sku'],
-        price=data['price'],
-        warehouse_id=data['warehouse_id']
-    )
-    
-    db.session.add(product)
-    db.session.commit()
-    
-    # Update inventory count
-    inventory = Inventory(
-        product_id=product.id,
-        warehouse_id=data['warehouse_id'],
-        quantity=data['initial_quantity']
-    )
-    
-    db.session.add(inventory)
-    db.session.commit()
-    
-    return {"message": "Product created", "product_id": product.id}
+**Impact:** Random 500 errors, broken API reliability.
 
+---
 
-The code compiles and works in simple cases, but fails under real production conditions.
+## 2. SKU Uniqueness Not Enforced
+- Backend does not check if SKU already exists.
+- DB may accept duplicates if constraint missing.
 
-2. Issues Identified
-2.1 Technical Issues
+**Impact:** Search, analytics, and inventory accuracy break.
 
-No input validation
+---
 
-Direct access to data['field'] can raise KeyError
+## 3. Incorrect Product–Warehouse Relationship
+- Product model incorrectly stores warehouse_id.
+- Products should exist globally; inventory is warehouse-specific.
 
-No type validation for numeric fields
+**Impact:** Cannot manage multi-warehouse inventory correctly.
 
-Multiple database commits
+---
 
-Product and inventory are committed in separate transactions
+## 4. Two Separate Commits → Partial Writes
+- product commit happens before inventory commit.
 
-No transaction management
+**Impact:** If inventory insert fails, product is created without stock entry.
 
-Partial writes are possible if inventory creation fails
+---
 
-SKU uniqueness not enforced
+## 5. Not Using a Database Transaction Block
+- Each commit is handled individually.
 
-Duplicate SKUs can be created concurrently
+**Impact:** Data inconsistency & rollback issues.
 
-Price precision not handled
+---
 
-Price is likely stored as a floating-point number
+## 6. Price Type Not Validated
+- Floats used instead of Decimal/Numeric.
 
-No exception handling
+**Impact:** Rounding errors in billing & reporting.
 
-Database errors surface as generic 500 responses
+---
 
-Race condition risk
+## 7. Missing Optional Field Handling
+- initial_quantity and warehouse_id are required implicitly.
 
-Two parallel requests can insert the same SKU
+**Impact:** API breaks for optional cases.
 
-2.2 Business Logic Issues
+---
 
-Product incorrectly coupled to warehouse
+## 8. No Error Handling
+- Exceptions from SQLAlchemy leak into client.
 
-Products should exist independently of warehouses
+**Impact:** Poor user experience & confusing behavior.
 
-Does not support multi-warehouse inventory
+---
 
-A product can exist in multiple warehouses
+## 9. Inventory Created Even If Warehouse Not Provided
+- Does not check for warehouse existence.
 
-Inventory creation assumed mandatory
-
-Some workflows create products before stocking
-
-Initial quantity assumed always present
-
-Breaks cases where inventory is added later
-
-3. Production Impact
-Issue	Impact
-No validation	API crashes on malformed requests
-No transaction	Orphan products or missing inventory
-Duplicate SKUs	Ordering, reporting, billing failures
-Float pricing	Financial inaccuracies
-Single-warehouse design	Limits platform scalability
-No error handling	Poor client experience
-4. Explanation of Fixes
-Transaction Safety
-
-with db.session.begin() ensures all-or-nothing behavior
-
-Prevents orphaned records
-
-Precision Handling
-
-Decimal ensures accurate financial calculations
-
-Decoupled Product Model
-
-Product is no longer tied directly to a warehouse
-
-Supports multi-warehouse inventory
-
-Optional Inventory
-
-Enables product-first workflows
-
-More flexible for B2B use cases
-
-Explicit Error Handling
-
-Prevents silent failures
-
-Returns meaningful HTTP status codes
-
-5. Assumptions Made
-
-SKU uniqueness is enforced globally
-
-Inventory creation is optional at product creation
-
-One inventory record per (product_id, warehouse_id)
-
-Price values require financial precision
-
-Product creation should not fail due to missing inventory
-
-6. Summary
-
-This refactor:
-
-Improves data integrity
-
-Aligns with real-world B2B inventory workflows
-
-Supports multi-warehouse scalability
-
-Prevents financial and operational errors
-
-Provides a clean, maintainable API contract
+**Impact:** Invalid inventory rows; FK violation.

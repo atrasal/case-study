@@ -1,132 +1,190 @@
-# StockFlow – Inventory Management System (B2B SaaS)
+StockFlow is a conceptual B2B SaaS inventory management platform designed for small and medium-sized businesses.
+It allows companies to manage products across multiple warehouses, track inventory changes, work with suppliers, and receive low-stock alerts to prevent stockouts.
 
-This repository contains my solution to the **StockFlow take-home assignment**, designed to evaluate backend engineering skills including API design, database modeling, debugging, and working with incomplete requirements in a real-world B2B SaaS context.
+This repository contains my solution to the take-home case study, structured into three parts:
 
-The solution is structured into three clearly separated parts to emphasize clarity, reasoning, and maintainability.
+Part 1: Code Review & Debugging
 
----
+Part 2: Database Design
 
-## Tech Stack (Assumed)
+Part 3: Low-Stock Alert API Implementation
 
-- **Backend**: Python, Flask  
-- **ORM**: SQLAlchemy  
-- **Database**: PostgreSQL (relational, ACID-compliant)  
-- **API Style**: REST  
-- **Architecture**: Modular, transaction-safe, scalable for B2B SaaS systems  
+The focus is on backend correctness, scalability, and real-world SaaS considerations, rather than a fully runnable application.
 
----
-
-## Repository Structure
-
+🧩 Repository Structure
 stockflow-backend/
-├── README.md
 ├── Part1/
-│ ├── issues.md
-│ └── fixed_endpoint.py
+│   ├── explanation_part1.md
+│   ├── fixed_endpoint.py
+│   └── issues.md
+│
 ├── Part2/
-│ ├── schema.sql
-│ └── explanation.md
-└── Part3/
-├── low_stock_alert.py
-└── assumptions.md
+│   ├── schema.sql
+│   ├── explanation.md
+│   └── questions.md
+│
+├── Part3/
+│   ├── low_stocks_alert.py
+│   ├── explanation_part3.md
+│   └── assumptions.md
+│
+└── README.md
 
----
+✅ Part 1 — Code Review & Debugging
+Objective
 
-## Part 1 – Code Review & Debugging
+Review an existing API endpoint for creating products and:
 
-**Location:** `Part1/`
+Identify technical and business logic issues
 
-This section reviews and fixes an existing API endpoint responsible for product creation.
+Explain real-world production impact
 
-### Key Topics Covered
-- Identification of technical and business-logic issues
-- Transaction safety and atomic operations
-- SKU uniqueness enforcement
-- Precision-safe handling of monetary values
-- Support for multi-warehouse inventory workflows
+Provide a corrected, production-safe version
 
-### Files
-- `issues.md`  
-  Detailed analysis of issues, production impact, fixes, assumptions, and summary.
+Key Improvements
 
-- `fixed_endpoint.py`  
-  Corrected implementation using proper transaction management, validation, and error handling.
+Added proper input validation
 
----
+Enforced SKU uniqueness
 
-## Part 2 – Database Design
+Corrected product vs warehouse relationship
 
-**Location:** `Part2/`
+Ensured atomic transactions
 
-This section proposes a relational database schema to support a multi-tenant B2B inventory platform.
+Improved error handling
 
-### Key Topics Covered
-- Multi-company and multi-warehouse support
-- Product–inventory separation
-- Inventory audit trail via movement tracking
-- Supplier relationships
-- Product bundles
-- Constraints, indexes, and scalability considerations
+Used Decimal for price accuracy
 
-### Files
-- `schema.sql`  
-  SQL DDL defining tables, relationships, and constraints.
+Made inventory creation optional
 
-- `explanation.md`  
-  Explanation of design decisions, assumptions, and open questions for the product team.
+📄 Files:
 
----
+issues.md — list of issues and impacts
 
-## Part 3 – Low Stock Alerts API
+fixed_endpoint.py — corrected API implementation
 
-**Location:** `Part3/`
+explanation_part1.md — reasoning behind changes
 
-This section implements an API endpoint that returns low-stock alerts for a company.
+🧱 Part 2 — Database Design
+Objective
 
-### Endpoint
+Design a scalable database schema for:
+
+Multi-company, multi-warehouse inventory
+
+Supplier management
+
+Inventory change tracking
+
+Product bundles
+
+Key Design Decisions
+
+Separate products and inventory for multi-warehouse support
+
+Use inventory_log for auditing and forecasting
+
+Enforce SKU uniqueness at company level
+
+Support bundles via self-referencing join table
+
+Use soft deletes to preserve history
+
+Add indexes for SaaS-scale performance
+
+Included
+
+SQL DDL schema
+
+Design explanations
+
+Missing requirement questions for product team
+
+📄 Files:
+
+schema.sql
+
+explanation.md
+
+questions.md
+
+🚨 Part 3 — Low-Stock Alert API
+Endpoint
 GET /api/companies/{company_id}/alerts/low-stock
 
-### Key Topics Covered
-- Multi-warehouse alert generation
-- Product-specific low-stock thresholds
-- Filtering based on recent sales activity
-- Supplier information for reordering
-- Estimation of days until stockout
-- Handling of edge cases and missing data
+Business Rules Implemented
 
-### Files
-- `low_stock_alert.py`  
-  API implementation with clear separation of concerns.
+Threshold varies per product
 
-- `assumptions.md`  
-  Business assumptions, edge cases handled, and performance considerations.
+Alerts only for products with recent sales
 
----
+Inventory evaluated per warehouse
 
-## Key Assumptions (Summary)
+Supplier details included for reordering
 
-- SKU uniqueness is enforced globally
-- Products can exist in multiple warehouses
-- Inventory quantities cannot be negative
-- Low-stock thresholds are defined per product
-- Only products with recent sales activity generate alerts
-- Each product has at most one primary supplier
+Forecast days_until_stockout using recent sales data
 
-All assumptions are explicitly documented in their respective sections.
+Key Concepts
 
----
+Trailing 30-day sales window
 
-## Notes for Reviewers
+Average daily consumption rate
 
-- The solution prioritizes **clarity, correctness, and reasoning** over over-optimization
-- Design decisions are documented due to intentionally incomplete requirements
-- Code and schema are written with **production readiness** in mind
-- Emphasis is placed on **data integrity, scalability, and maintainability**
+Warehouse-level alerts
 
----
+Graceful handling of missing data
 
-## Author
+Clear assumptions due to incomplete requirements
 
-**Aaditya Rasal**
+📄 Files:
 
-This repository is submitted as part of the **StockFlow backend selection process**.
+low_stocks_alert.py
+
+explanation_part3.md
+
+assumptions.md
+
+🧠 Assumptions & Scope
+
+This is not a fully runnable application
+
+Focus is on design, reasoning, and correctness
+
+Assumptions are explicitly documented in each part
+
+Forecasting logic is intentionally simple due to missing requirements
+
+Bundles are excluded from alerts unless specified otherwise
+
+📈 Scalability & SaaS Considerations
+
+Multi-tenant isolation via company_id
+
+Indexed queries for large datasets
+
+Transaction safety to prevent partial writes
+
+Audit-friendly inventory logs
+
+Extensible schema for future features (variants, batch tracking, bins)
+
+💬 What This Submission Demonstrates
+
+Strong backend fundamentals
+
+Production-oriented thinking
+
+Ability to work with incomplete requirements
+
+Clear communication and documentation
+
+Real-world B2B SaaS design awareness
+
+🏁 Final Notes
+
+This case study was approached as a real production system, not just an academic exercise.
+Trade-offs, assumptions, and future extensions are intentionally documented to reflect collaboration with product and engineering teams.
+
+Author: Aaditya Rasal
+Purpose: Backend Engineering Case Study
+Tech Stack (assumed): Python, Flask, SQLAlchemy, PostgreSQL

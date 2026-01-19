@@ -1,61 +1,108 @@
+-- STOCKFLOW — Database Schema
+
+
+-- Companies
+
 CREATE TABLE companies (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+
+-- Warehouses
 
 CREATE TABLE warehouses (
     id SERIAL PRIMARY KEY,
     company_id INT NOT NULL REFERENCES companies(id),
     name VARCHAR(255) NOT NULL,
-    location VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    address TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_warehouses_company ON warehouses(company_id);
+
+
+-- Products
 
 CREATE TABLE products (
     id SERIAL PRIMARY KEY,
+    company_id INT NOT NULL REFERENCES companies(id),
     name VARCHAR(255) NOT NULL,
-    sku VARCHAR(100) NOT NULL UNIQUE,
-    price NUMERIC(10,2) NOT NULL,
-    product_type VARCHAR(50),
-    low_stock_threshold INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    sku VARCHAR(100) NOT NULL,
+    price NUMERIC(12,2) NOT NULL,
+    is_bundle BOOLEAN DEFAULT FALSE,
+    threshold INT DEFAULT 20,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(company_id, sku)
 );
+
+CREATE INDEX idx_products_company ON products(company_id);
+
+
+-- Bundle Components (Many-to-Many)
+
+CREATE TABLE product_components (
+    bundle_id INT REFERENCES products(id),
+    component_id INT REFERENCES products(id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    PRIMARY KEY(bundle_id, component_id)
+);
+
+
+-- Inventory (Per-Warehouse Stock)
 
 CREATE TABLE inventory (
     id SERIAL PRIMARY KEY,
     product_id INT NOT NULL REFERENCES products(id),
     warehouse_id INT NOT NULL REFERENCES warehouses(id),
-    quantity INT NOT NULL CHECK (quantity >= 0),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (product_id, warehouse_id)
+    quantity INT DEFAULT 0 CHECK (quantity >= 0),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    UNIQUE(product_id, warehouse_id)
 );
 
-CREATE TABLE inventory_movements (
+CREATE INDEX idx_inventory_product_warehouse
+    ON inventory(product_id, warehouse_id);
+
+
+-- Inventory Log (Audit + Forecasting)
+
+CREATE TABLE inventory_log (
     id SERIAL PRIMARY KEY,
-    inventory_id INT NOT NULL REFERENCES inventory(id),
+    product_id INT NOT NULL REFERENCES products(id),
+    warehouse_id INT NOT NULL REFERENCES warehouses(id),
+    change_type VARCHAR(20) NOT NULL CHECK (
+        change_type IN ('sale', 'restock', 'adjustment')
+    ),
     quantity_change INT NOT NULL,
-    reason VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_inventorylog_product_date
+    ON inventory_log(product_id, created_at);
+
+
+-- Suppliers
 
 CREATE TABLE suppliers (
     id SERIAL PRIMARY KEY,
+    company_id INT NOT NULL REFERENCES companies(id),
     name VARCHAR(255) NOT NULL,
-    contact_email VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    contact_email VARCHAR(255)
 );
 
-CREATE TABLE product_suppliers (
-    product_id INT REFERENCES products(id),
+
+-- Supplier - Product Mapping
+
+CREATE TABLE supplier_products (
     supplier_id INT REFERENCES suppliers(id),
-    is_primary BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (product_id, supplier_id)
+    product_id INT REFERENCES products(id),
+    lead_time_days INT DEFAULT 7,
+    PRIMARY KEY(supplier_id, product_id)
 );
 
-CREATE TABLE product_bundles (
-    bundle_product_id INT REFERENCES products(id),
-    component_product_id INT REFERENCES products(id),
-    quantity INT NOT NULL CHECK (quantity > 0),
-    PRIMARY KEY (bundle_product_id, component_product_id)
-);
+CREATE INDEX idx_supplier_products_supplier
+    ON supplier_products(supplier_id);
